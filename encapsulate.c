@@ -231,6 +231,7 @@ void process_ipv6_packet (char *buf, int len){
 		}else{
 			offset = ntohs(ip6f->ip6f_offlg);
 		}
+syslog_write(LOG_INFO, "offset = %d\n", offset);
 
 		if(v6_frag.size < sizeof(struct ip6_hdr) + offset + ntohs(ip6->ip6_plen) - sizeof(struct ip6_frag)){
 			tmp = realloc(v6_frag.buf, sizeof(struct ip6_hdr) + offset + ntohs(ip6->ip6_plen) - sizeof(struct ip6_frag));
