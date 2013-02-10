@@ -218,7 +218,7 @@ void process_ipv6_packet (char *buf, int len){
 			memset(&v6_frag, 0, sizeof(struct v6_frag));
 		}
 
-		if(v6_frag.id == 0){
+		if(v6_frag.buf == NULL){
 syslog_write(LOG_INFO, "id = 0\n");
 			v6_frag.id = ip6f->ip6f_ident;
 			v6_frag.buf = malloc(sizeof(struct ip6_hdr));
