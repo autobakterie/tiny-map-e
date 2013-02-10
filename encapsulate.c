@@ -378,7 +378,7 @@ syslog_write(LOG_INFO, "generated v6 addr: %s\n", v6);
 
 
 		srand(time(NULL));
-		frag_id = rand();
+		frag_id = rand() % 32767;
 
 		while(!frag_last){
 			int frag_len = 0;
