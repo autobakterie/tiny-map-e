@@ -245,12 +245,15 @@ syslog_write(LOG_INFO, "entered\n");
 
 			v6_frag.buf = tmp;
 			v6_frag.size = sizeof(struct ip6_hdr) + offset + ntohs(ip6->ip6_plen) - sizeof(struct ip6_frag);
+
+syslog_write(LOG_INFO, "size = %d\n", v6_frag.size);
 		}
 
 		memcpy(v6_frag.buf + sizeof(struct ip6_hdr) + offset,
 			buf + sizeof(struct ip6_hdr) + sizeof(struct ip6_frag), 
 			ntohs(ip6->ip6_plen) - sizeof(struct ip6_frag));
 		v6_frag.count += ntohs(ip6->ip6_plen) - sizeof(struct ip6_frag);
+syslog_write(LOG_INFO, "count += %d\n", ntohs(ip6->ip6_plen) - sizeof(struct ip6_frag));
 
 
 		if(!(ip6f->ip6f_offlg & IP6F_MORE_FRAG)){
