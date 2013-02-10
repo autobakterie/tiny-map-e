@@ -240,7 +240,7 @@ syslog_write(LOG_INFO, "offset = %d\n", offset);
 			}
 
 			if(tmp != v6_frag.buf){
-				free(v6_frag.buf);
+				//free(v6_frag.buf);
 			}
 
 			v6_frag.buf = tmp;
