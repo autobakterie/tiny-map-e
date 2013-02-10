@@ -258,6 +258,7 @@ syslog_write(LOG_INFO, "entered\n");
 				decap_packet(v6_frag.buf, v6_frag.size);
 			}else{
 				/* failed to reassemble fragmented packets */
+syslog_write(LOG_INFO, "failed to reassemble size = %d, count = %d\n", v6_frag.size, v6_frag.count);
 			}
 
 			free(v6_frag.buf);
