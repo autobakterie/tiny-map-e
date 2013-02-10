@@ -213,6 +213,7 @@ void process_ipv6_packet (char *buf, int len){
 		ip6f = (struct ip6_frag *)(buf + sizeof(struct ip6_hdr));
 
 		if((v6_frag.id != ip6f->ip6f_ident) && (v6_frag.buf != NULL)){
+syslog_write(LOG_INFO, "entered\n");
 			/* previous reassembly has given up */
 			free(v6_frag.buf);
 			memset(&v6_frag, 0, sizeof(struct v6_frag));
