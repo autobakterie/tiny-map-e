@@ -212,7 +212,6 @@ void process_ipv6_packet (char *buf, int len){
 	if(ip6->ip6_nxt == IPPROTO_FRAGMENT){
 		ip6f = (struct ip6_frag *)(buf + sizeof(struct ip6_hdr));
 
-syslog_write(LOG_INFO, "id = %d\n", ntohl(ip6f->ip6f_ident));
 		if((v6_frag.id != ip6f->ip6f_ident) && (v6_frag.buf != NULL)){
 			/* previous reassembly has given up */
 			free(v6_frag.buf);
@@ -232,7 +231,6 @@ syslog_write(LOG_INFO, "id = %d\n", ntohl(ip6f->ip6f_ident));
 		}else{
 			offset = ntohs(ip6f->ip6f_offlg);
 		}
-syslog_write(LOG_INFO, "offset = %d\n", offset);
 
 		if(v6_frag.size < sizeof(struct ip6_hdr) + offset + ntohs(ip6->ip6_plen) - sizeof(struct ip6_frag)){
 			tmp = realloc(v6_frag.buf, sizeof(struct ip6_hdr) + offset + ntohs(ip6->ip6_plen) - sizeof(struct ip6_frag));
@@ -243,23 +241,19 @@ syslog_write(LOG_INFO, "offset = %d\n", offset);
 			v6_frag.buf = tmp;
 			v6_frag.size = sizeof(struct ip6_hdr) + offset + ntohs(ip6->ip6_plen) - sizeof(struct ip6_frag);
 
-syslog_write(LOG_INFO, "size = %d\n", v6_frag.size);
 		}
 
 		memcpy(v6_frag.buf + sizeof(struct ip6_hdr) + offset,
 			buf + sizeof(struct ip6_hdr) + sizeof(struct ip6_frag), 
 			ntohs(ip6->ip6_plen) - sizeof(struct ip6_frag));
 		v6_frag.count += ntohs(ip6->ip6_plen) - sizeof(struct ip6_frag);
-syslog_write(LOG_INFO, "count += %d\n", ntohs(ip6->ip6_plen) - sizeof(struct ip6_frag));
 
 
 		if(!(ip6f->ip6f_offlg & IP6F_MORE_FRAG)){
 			if(v6_frag.size == v6_frag.count){
 				decap_packet(v6_frag.buf, v6_frag.size);
-syslog_write(LOG_INFO, "succeeded to reassemble size = %d, count = %d\n", v6_frag.size, v6_frag.count);
 			}else{
 				/* failed to reassemble fragmented packets */
-syslog_write(LOG_INFO, "failed to reassemble size = %d, count = %d\n", v6_frag.size, v6_frag.count);
 			}
 
 			free(v6_frag.buf);
