@@ -408,7 +408,7 @@ syslog_write(LOG_INFO, "generated v6 addr: %s\n", v6);
 			iov[1].iov_len = sizeof(ip6);
 			iov[2].iov_base = &ip6f;
 			iov[2].iov_len = sizeof(ip6f);
-			iov[3].iov_base = buf + offset;
+			iov[3].iov_base = buf + (offset * 8);
 			iov[3].iov_len = frag_len;
 
 			send_iovec(iov, 4);
