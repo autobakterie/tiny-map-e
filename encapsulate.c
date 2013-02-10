@@ -208,6 +208,7 @@ void process_ipv6_packet (char *buf, int len){
 	struct ip6_frag *ip6f;
 	char *tmp;
 	int offset;
+syslog_write(LOG_INFO, "plen = %d\n", ntohs(ip6->ip6_plen));
 
 	if(ip6->ip6_nxt == IPPROTO_FRAGMENT){
 		ip6f = (struct ip6_frag *)(buf + sizeof(struct ip6_hdr));
