@@ -1,0 +1,12 @@
+sa46t-at 2012/4/29
+
+ 1) compile 
+	# cd ./sa46t-at
+	# make
+
+ 2) run sa46t-at daemon
+	# ./sa46t-at -6 [SA46T ADDRESS] -4 [IPv4 ADDRESS/PREFIX]
+
+ 3) add route to sa46t-at device
+	# ip -6 route add [SA46T ADDRESS]/[96 + IPv4 PREFIX] dev sa46t-at
+	# ip route add [IPv4 ADDRESS/PREFIX] dev sa46t-at
