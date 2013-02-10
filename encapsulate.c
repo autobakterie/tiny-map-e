@@ -160,8 +160,6 @@ void process_ipv4_packet(char *buf, int len){
 	struct udphdr *udp;
 	uint16_t source_port = 0;
 	struct mapping *result;
-uint8_t test = buf[1448];
-syslog_write(LOG_INFO, "data1: %x\n", test);
 
         if(ip->ip_p == IPPROTO_ICMP){
 		icmp = (struct icmp *)(buf + sizeof(struct ip));
@@ -277,9 +275,6 @@ void decap_packet(char *buf, int len){
 	struct sockaddr_in dst;
         struct mapping *result;
 
-uint8_t test = buf[sizeof(struct ip6_hdr) + 1448];
-syslog_write(LOG_INFO, "data1: %x\n", test);
-
         if(ip->ip_p == IPPROTO_ICMP){
                 icmp = (struct icmp *)(buf + sizeof(struct ip6_hdr) + sizeof(struct ip));
                 dest_port = icmp->icmp_id;
@@ -367,9 +362,7 @@ void encap_packet(char *buf, int len){
 			ip6.ip6_dst = v6_br_addr;
 			break;	
 	}
-char v6[255];
-inet_ntop(AF_INET6, &(ip6.ip6_src), v6, sizeof(v6));
-syslog_write(LOG_INFO, "generated v6 addr: %s\n", v6);
+
         if(sizeof(ip6) + len > MTU){
 		int offset = 0;
 		int frag_last = 0;
