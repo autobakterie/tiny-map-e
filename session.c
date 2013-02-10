@@ -16,7 +16,7 @@
 
 uint32_t create_table_key(void *address, uint16_t port){
 	struct in_addr *ip = (struct in_addr *)address;
-	uint32_t sum = ip->s_addr + htons(port);
+	uint32_t sum = ip->s_addr + port;
 
 	return sum % MAX_SESSION;
 }
@@ -188,7 +188,7 @@ struct in_addr select_mapped_addr(void *source_addr, uint16_t source_port){
         struct in_addr *ip = (struct in_addr *)source_addr;
 	struct in_addr result = v4_rule_addr;
 	uint32_t v4_suffix = ea;
-        uint32_t sum = ip->s_addr + htons(source_port);
+        uint32_t sum = ip->s_addr + source_port;
 	int range;
 	int i;
 
@@ -199,7 +199,7 @@ struct in_addr select_mapped_addr(void *source_addr, uint16_t source_port){
 		range *= 2;
 	}
 
-	*(uint32_t *)&result.s_addr |= v4_suffix;
+	*(uint32_t *)&result.s_addr |= htonl(v4_suffix);
 	*(uint32_t *)&result.s_addr |= htonl(sum % range);
 	
         return result;
@@ -210,20 +210,21 @@ uint16_t select_restricted_port(struct in_addr mapped_addr, void *source_addr, u
 	struct in_addr *ip = (struct in_addr *)source_addr;
 	uint16_t psid = (uint16_t)ea;
 	uint16_t result;
-	uint32_t sum = ip->s_addr + htons(source_port);
+	uint32_t sum = ip->s_addr + source_port;
 	int range;
 	int count = 0;
 	int i;
 
 	psid = psid << (16 - psid_len);
-	psid |= (htonl(1) << 16 - a_bits);
+	psid = psid >> (a_bits);
+	psid |= 1 << (16 - a_bits);
 
         for(i = 0, range = 1; i < 16 - (a_bits + psid_len); i++){
                 range *= 2;
         }
 
 	while(1){
-		result = psid | htonl((sum + count) % range);
+		result = htons(psid | (sum + count) % range);
 		if(search_mapping_table_outer(mapped_addr, result) == NULL){
 			return result;
 		}
@@ -239,17 +240,19 @@ uint16_t select_restricted_port(struct in_addr mapped_addr, void *source_addr, u
 
 int insert_new_mapping(struct mapping *result){
 	struct mapping *ptr = (struct mapping *)mapping_table;
-	struct in_addr mapped_addr = select_mapped_addr(&(result->source_addr), result->source_port);
+	struct in_addr mapped_addr;
 	uint16_t mapped_port;
         char log_source[256];
         char log_mapped[256];
+
+	mapped_addr = select_mapped_addr(&(result->source_addr), result->source_port);
+	mapped_port = select_restricted_port(mapped_addr, &(result->source_addr), result->source_port);
 
 	/* lock session table */
 	if(pthread_mutex_lock(&mutex_session_table) != 0){
         	err(EXIT_FAILURE, "failed to lock session table");
         }
 
-	mapped_port = select_restricted_port(mapped_addr, &(result->source_addr), result->source_port);
 	if(mapped_port != 0){
 		result->mapped_addr = mapped_addr;
 		result->mapped_port = mapped_port;

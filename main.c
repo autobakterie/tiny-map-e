@@ -154,7 +154,6 @@ int main(int argc, char *argv[]){
                                         printf ("Invalid EA-bits configuration\n");
                                         return -1;
                                 }
-				ea = htonl(ea);
 				ea_configured = 1;
 
 				break;
@@ -190,7 +189,6 @@ int main(int argc, char *argv[]){
 					printf("Invalid subnet-id\n");
 					return -1;
 				}
-				subnet_id = htonl(subnet_id);
 
 				subnet_id_configured = 1;
 				break;
@@ -233,12 +231,11 @@ int main(int argc, char *argv[]){
 		return 1;
 	}
 
-	if(64 - (v6_rule_prefix + ea_len) > 0){
-		subnet_id_len = 64 - (v6_rule_prefix + ea_len);
-	}else{
-		subnet_id_len = 0;
-		if(subnet_id_configured){
-			usage();
+	if(subnet_id_configured){
+		if(64 - (v6_rule_prefix + ea_len) > 0){
+			subnet_id_len = 64 - (v6_rule_prefix + ea_len);
+		}else{
+			printf("End-User IPv6 prefix is larger than 64 bits\n");
 			return 1;
 		}
 	}

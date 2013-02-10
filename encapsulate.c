@@ -22,14 +22,38 @@
 #include "encapsulate.h"
 #include "nat.h"
 
-void bitset_v6addr(struct in6_addr *v6addr, int num){
+void ntoh128(uint32_t *target){
+	int i;
+	for(i = 0; i < 128 / 32; i++){
+		target[i] = ntohl(target[i]);
+	}
+}
+
+void hton128(uint32_t *target){
+	int i;
+	for(i = 0; i < 128 / 32; i++){
+		target[i] = htonl(target[i]);
+	}
+}
+
+void bitset128(uint32_t *target, int num){
 	int index = num / 32;
-	uint32_t mask = htonl(1) << 32 - (num % 32);
-	v6addr->s6_addr32[index] |= mask;
+	uint32_t mask = 1 << 32 - (num % 32);
+	target[index] |= mask;
+}
+
+int bitcheck128(uint32_t *target, int num){
+	int index = num / 32;
+	uint32_t mask = 1 << 32 - (num % 32);
+	if(target[index] & mask){
+		return 1;
+	}else{
+		return 0;
+	}
 }
 
 int bitcheck32(uint32_t target, int num){
-	int mask = htonl(1) << 32 - num;
+	int mask = 1 << 32 - num;
 	if(target & mask){
 		return 1;
 	}else{
@@ -38,7 +62,7 @@ int bitcheck32(uint32_t target, int num){
 }
 
 int bitcheck16(uint16_t target, int num){
-	int mask = htonl(1) << 16 - num;
+	int mask = 1 << 16 - num;
 	if(target & mask){
 		return 1;
 	}else{
@@ -47,29 +71,72 @@ int bitcheck16(uint16_t target, int num){
 }
 
 struct in6_addr generate_mapped_v6addr(struct in6_addr v6_rule_addr, struct in_addr v4_addr, uint16_t port){
-	struct in6_addr mapped_v6addr = v6_rule_addr;
-	uint32_t v4_suffix = (uint32_t)v4_addr.s_addr;
+	struct in6_addr mapped_v6addr;
+	struct in6_addr v6_rule_addr_h = v6_rule_addr;
+	uint32_t v4addr = ntohl((uint32_t)v4_addr.s_addr);
 	int offset = 0;
-	uint16_t psid = port;
+	uint16_t psid = ntohs(port);
 	int i;
 
-	offset = v6_rule_prefix;
+	memset(&mapped_v6addr, 0, sizeof(struct in6_addr));
+	ntoh128((uint32_t *)&v6_rule_addr_h);
+        psid = psid << a_bits;
+        psid = psid >> 16 - psid_len;
+
+        /* set interface-id
+		If the End-user IPv6 prefix length is larger than 64,
+   		the interface identifier is overwritten by the prefix.
+	*/
+	offset = v6_rule_prefix + ea_len + subnet_id_len + 16;
+
+        for(i = 0; i < v4_rule_prefix; i++){
+                if(bitcheck32(v4addr, i + 1)){
+                        bitset128((uint32_t *)&mapped_v6addr, offset + i + 1);
+                }
+        }
+
+        offset += v4_rule_prefix;
+
+        for(i = 0; i < v4_suffix_len; i++){
+                if(bitcheck32(v4addr, 32 - (v4_suffix_len - (i + 1)))){
+                        bitset128((uint32_t *)&mapped_v6addr, offset + i + 1);
+                }
+        }
+
+        offset += v4_suffix_len;
+
+        for(i = 0; i < psid_len; i++){
+                if(bitcheck16(psid, 16 - (psid_len - (i + 1)))){
+                        bitset128((uint32_t *)&mapped_v6addr, offset + (16 - psid_len) + i + 1);
+                }
+        }
+
+
+	/* set v6 rule address */
+	offset = 0;
+
+	for(i = 0; i < v6_rule_prefix; i++){
+		if(bitcheck128((uint32_t *)&v6_rule_addr_h, i + 1)){
+			bitset128((uint32_t *)&mapped_v6addr, offset + i + 1);
+		}
+	}
+
+
+	offset += v6_rule_prefix;
 
 	/* set v4suffix in EA bits */
 	for(i = 0; i < v4_suffix_len; i++){
-		if(bitcheck32(v4_suffix, 32 - (v4_suffix_len - i - 1))){
-			bitset_v6addr(&mapped_v6addr, offset + i + 1);
+		if(bitcheck32(v4addr, 32 - (v4_suffix_len - (i + 1)))){
+			bitset128((uint32_t *)&mapped_v6addr, offset + i + 1);
 		}
 	}
 
 	offset += v4_suffix_len;
 
 	/* set PSID in EA bits */
-	psid = psid << a_bits;
-	psid = psid >> 16 - psid_len;
 	for(i = 0; i < psid_len; i++){
 		if(bitcheck16(psid, 16 - (psid_len - i - 1))){
-			bitset_v6addr(&mapped_v6addr, offset + i + 1);
+			bitset128((uint32_t *)&mapped_v6addr, offset + i + 1);
 		}
 	}
 
@@ -78,37 +145,11 @@ struct in6_addr generate_mapped_v6addr(struct in6_addr v6_rule_addr, struct in_a
 	/* set subnet-id */
 	for(i = 0; i < subnet_id_len; i++){
 		if(bitcheck32(subnet_id, 32 - (subnet_id_len - i -1))){
-			bitset_v6addr(&mapped_v6addr, offset + i + 1);
+			bitset128((uint32_t *)&mapped_v6addr, offset + i + 1);
 		}
 	}
 
-	offset += subnet_id_len;
-
-	/* set interface-id */
-	offset += 16;
-	for(i = 0; i < v4_rule_prefix; i++){
-		if(bitcheck32((uint32_t)v4_rule_addr.s_addr, 32 - (v4_rule_prefix - i - 1))){
-			bitset_v6addr(&mapped_v6addr, offset + i + 1);
-		}
-	}
-
-	offset += v4_rule_prefix;
-
-        for(i = 0; i < v4_suffix_len; i++){
-                if(bitcheck32(v4_suffix, 32 - (v4_suffix_len - i - 1))){
-                        bitset_v6addr(&mapped_v6addr, offset + i + 1);
-                }
-        }
-
-	offset += 32 - v4_rule_prefix;
-	offset += 16 - psid_len;
-
-        for(i = 0; i < psid_len; i++){
-                if(bitcheck16(psid, 16 - (psid_len - i - 1))){
-                        bitset_v6addr(&mapped_v6addr, offset + i + 1);
-                }
-        }
-
+	hton128((uint32_t *)&mapped_v6addr);
 	return mapped_v6addr;
 }
 
@@ -293,15 +334,15 @@ void encap_packet(char *buf, int len){
 	uint16_t src_port;
 
         if(ip->ip_p == IPPROTO_ICMP){
-                icmp = (struct icmp *)(buf + sizeof(struct ip6_hdr) + sizeof(struct ip));
+                icmp = (struct icmp *)(buf + sizeof(struct ip));
                 dest_port = icmp->icmp_id;
 		src_port = icmp->icmp_id;
         }else if(ip->ip_p == IPPROTO_TCP){
-                tcp = (struct tcphdr *)(buf + sizeof(struct ip6_hdr) + sizeof(struct ip));
+                tcp = (struct tcphdr *)(buf + sizeof(struct ip));
                 dest_port = tcp->dest;
 		src_port = tcp->source;
         }else if(ip->ip_p == IPPROTO_UDP){
-                udp = (struct udphdr *)(buf + sizeof(struct ip6_hdr) + sizeof(struct ip));
+                udp = (struct udphdr *)(buf + sizeof(struct ip));
                 dest_port = udp->dest;
 		src_port = udp->source;
         }else{
@@ -319,6 +360,9 @@ void encap_packet(char *buf, int len){
 			ip6.ip6_dst = v6_br_addr;
 			break;	
 	}
+char v6[255];
+inet_ntop(AF_INET6, &(ip6.ip6_src), v6, sizeof(v6));
+syslog_write(LOG_INFO, "generated v6 addr: %s\n", v6);
 
         if(sizeof(ip6) + len > MTU){
 		int offset = 0;
