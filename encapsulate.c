@@ -257,13 +257,14 @@ syslog_write(LOG_INFO, "count += %d\n", ntohs(ip6->ip6_plen) - sizeof(struct ip6
 
 		if(!(ip6f->ip6f_offlg & IP6F_MORE_FRAG)){
 			if(v6_frag.size == v6_frag.count){
+syslog_write(LOG_INFO, "failed to reassemble size = %d, count = %d\n", v6_frag.size, v6_frag.count);
 				decap_packet(v6_frag.buf, v6_frag.size);
 			}else{
 				/* failed to reassemble fragmented packets */
 syslog_write(LOG_INFO, "failed to reassemble size = %d, count = %d\n", v6_frag.size, v6_frag.count);
 			}
 
-			//free(v6_frag.buf);
+			free(v6_frag.buf);
 			memset(&v6_frag, 0, sizeof(struct v6_frag));
 		}
 	}else{
