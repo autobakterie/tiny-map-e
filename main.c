@@ -291,7 +291,7 @@ int create_raw_socket(){
         int fd;
 
         /* create Raw Socket */
-        if((fd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) < 0){
+        if((fd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) < 0){
                 perror("rawsocket");
                 return -1;
         }

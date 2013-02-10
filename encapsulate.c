@@ -213,6 +213,7 @@ void process_ipv6_packet (char *buf, int len){
 		ip6f = (struct ip6_frag *)(buf + sizeof(struct ip6_hdr));
 
 		if((v6_frag.id != ip6f->ip6f_ident) && (v6_frag.buf != NULL)){
+			/* previous reassembly has given up */
 			free(v6_frag.buf);
 			memset(&v6_frag, 0, sizeof(struct v6_frag));
 		}
@@ -363,18 +364,19 @@ void encap_packet(char *buf, int len){
 char v6[255];
 inet_ntop(AF_INET6, &(ip6.ip6_src), v6, sizeof(v6));
 syslog_write(LOG_INFO, "generated v6 addr: %s\n", v6);
-
         if(sizeof(ip6) + len > MTU){
 		int offset = 0;
+		int frag_last = 0;
 
-		while(len - offset > 0){
+		while(!frag_last){
 			int frag_len = 0;
-			int frag_last = 0;
 
-			if(len - offset > MTU - (sizeof(struct ip6_hdr) + sizeof(struct ip6_frag))){
-				frag_len = MTU - (sizeof(struct ip6_hdr) + sizeof(struct ip6_frag));
+			if(len - 8 * offset
+				> MTU - (sizeof(struct ip6_hdr) + sizeof(struct ip6_frag))){
+
+				frag_len = (MTU - (sizeof(struct ip6_hdr) + sizeof(struct ip6_frag))) / 8 * 8;
 			}else{
-				frag_len = len - offset;
+				frag_len = len - 8 * offset;
 				frag_last = 1;
 			}
 
@@ -385,7 +387,7 @@ syslog_write(LOG_INFO, "generated v6 addr: %s\n", v6);
 
 			memset(&ip6f, 0, sizeof(struct ip6_frag));
 			ip6f.ip6f_nxt = IPPROTO_IPIP;
-			ip6f.ip6f_offlg = htons(offset);
+			ip6f.ip6f_offlg = htons(offset * 8);
 			ip6f.ip6f_ident = ip->ip_id;
 
 			if(!frag_last){
@@ -405,7 +407,7 @@ syslog_write(LOG_INFO, "generated v6 addr: %s\n", v6);
 
 			send_iovec(iov, 4);
 
-			offset += frag_len;
+			offset += frag_len / 8;
 		}
 
 		return;
