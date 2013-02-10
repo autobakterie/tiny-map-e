@@ -238,7 +238,11 @@ syslog_write(LOG_INFO, "entered\n");
 			if(tmp == NULL){
 				return;
 			}
-			free(v6_frag.buf);
+
+			if(tmp != v6_frag.buf){
+				free(v6_frag.buf);
+			}
+
 			v6_frag.buf = tmp;
 			v6_frag.size = sizeof(struct ip6_hdr) + offset + ntohs(ip6->ip6_plen) - sizeof(struct ip6_frag);
 		}
