@@ -213,7 +213,6 @@ void process_ipv6_packet (char *buf, int len){
 		ip6f = (struct ip6_frag *)(buf + sizeof(struct ip6_hdr));
 
 		if((v6_frag.id != ip6f->ip6f_ident) && (v6_frag.buf != NULL)){
-syslog_write(LOG_INFO, "entered\n");
 			/* previous reassembly has given up */
 			free(v6_frag.buf);
 			memset(&v6_frag, 0, sizeof(struct v6_frag));
@@ -264,7 +263,7 @@ syslog_write(LOG_INFO, "count += %d\n", ntohs(ip6->ip6_plen) - sizeof(struct ip6
 syslog_write(LOG_INFO, "failed to reassemble size = %d, count = %d\n", v6_frag.size, v6_frag.count);
 			}
 
-			free(v6_frag.buf);
+			//free(v6_frag.buf);
 			memset(&v6_frag, 0, sizeof(struct v6_frag));
 		}
 	}else{
