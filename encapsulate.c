@@ -212,6 +212,7 @@ void process_ipv6_packet (char *buf, int len){
 	if(ip6->ip6_nxt == IPPROTO_FRAGMENT){
 		ip6f = (struct ip6_frag *)(buf + sizeof(struct ip6_hdr));
 
+syslog_write(LOG_INFO, "id = %d\n", ntohl(ip6f->ip6f_ident));
 		if((v6_frag.id != ip6f->ip6f_ident) && (v6_frag.buf != NULL)){
 			/* previous reassembly has given up */
 			free(v6_frag.buf);
