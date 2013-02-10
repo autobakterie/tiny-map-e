@@ -219,7 +219,6 @@ void process_ipv6_packet (char *buf, int len){
 		}
 
 		if(v6_frag.buf == NULL){
-syslog_write(LOG_INFO, "id = 0\n");
 			v6_frag.id = ip6f->ip6f_ident;
 			v6_frag.buf = malloc(sizeof(struct ip6_hdr));
 			v6_frag.size = sizeof(struct ip6_hdr);
@@ -374,6 +373,11 @@ syslog_write(LOG_INFO, "generated v6 addr: %s\n", v6);
         if(sizeof(ip6) + len > MTU){
 		int offset = 0;
 		int frag_last = 0;
+		uint32_t frag_id;
+
+
+		srand(time(NULL));
+		frag_id = rand();
 
 		while(!frag_last){
 			int frag_len = 0;
