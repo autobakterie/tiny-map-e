@@ -400,7 +400,7 @@ syslog_write(LOG_INFO, "generated v6 addr: %s\n", v6);
 			memset(&ip6f, 0, sizeof(struct ip6_frag));
 			ip6f.ip6f_nxt = IPPROTO_IPIP;
 			ip6f.ip6f_offlg = htons(offset * 8);
-			ip6f.ip6f_ident = ip->ip_id;
+			ip6f.ip6f_ident = htonl(frag_id);
 
 			if(!frag_last){
 				ip6f.ip6f_offlg |= IP6F_MORE_FRAG;
