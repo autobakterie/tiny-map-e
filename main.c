@@ -18,6 +18,8 @@
 #include <signal.h>
 #include <syslog.h>
 #include <stdarg.h>
+#include <sys/signalfd.h>
+#include <sys/epoll.h>
 
 #include "main.h"
 #include "session.h"
@@ -57,12 +59,6 @@ pthread_mutex_t mutex_session_table = PTHREAD_MUTEX_INITIALIZER;
 int syslog_facility = SYSLOG_FACILITY;
 char *optarg;
 
-void clean_up(int signal){
-        close(tun_fd);
-	close(raw_fd);
-        exit (0);
-}
-
 void usage(){
 	printf("\n");
 	printf(" Usage:\n");
@@ -90,7 +86,7 @@ void usage(){
 }
 
 int main(int argc, char *argv[]){
-        char buf[2048];
+        char buf[65535];
         struct tun_pi *pi = (struct tun_pi *)buf;
 	int read_len;
 	char tun_name[] = DEV_NAME;
@@ -99,6 +95,11 @@ int main(int argc, char *argv[]){
 	int debug_mode = 0;
 	char v4_pool_arg[255];
 	char v6_pool_arg[255];
+	struct epoll_event ev, ev_ret[MAXEVENTS]; 
+	int i, epfd, nfds;
+	sigset_t sigmask;
+	struct signalfd_siginfo siginfo;
+	int signal_fd;
 
 	int ipv6_configured = 0;
 	int ipv4_configured = 0;
@@ -243,6 +244,7 @@ int main(int argc, char *argv[]){
 
 	mapping_table = init_mapping_table();
 
+	/* tun fd preparing */
         if ((tun_fd = tun_alloc (tun_name)) < 0){
 		err(EXIT_FAILURE, "failt to tun_alloc");
 	}
@@ -251,13 +253,42 @@ int main(int argc, char *argv[]){
 		err(EXIT_FAILURE, "failt to tun_up");
 	}
 
+	/* rawsocket fd preparing */
         if((raw_fd = create_raw_socket()) < 0){
                 err(EXIT_FAILURE, "fail to create raw socket");
         }
 
-        if (signal (SIGINT, clean_up)  == SIG_ERR){
-                err(EXIT_FAILURE, "failt to register SIGINT");
+	/* signal_fd preparing */
+	sigemptyset(&sigmask);
+	sigaddset(&sigmask, SIGINT);
+	sigaddset(&sigmask, SIGALRM);
+
+	if (sigprocmask(SIG_BLOCK, &sigmask, NULL) == -1){
+		err(EXIT_FAILURE, "failt to block signals");
 	}
+
+	if(signal_fd = signalfd(-1, &sigmask, 0) < 0){
+		err(EXIT_FAILURE, "failt to make signal fd");
+	}
+
+        /* epoll fd preparing */
+        if((epfd = epoll_create(MAXEVENTS)) < 0){
+                err(EXIT_FAILURE, "failt to make epoll fd");
+        }
+
+	memset(&ev, 0, sizeof(ev));
+	ev.events = EPOLLIN;
+	ev.data.fd = tun_fd;
+	if (epoll_ctl(epfd, EPOLL_CTL_ADD, tun_fd, &ev) != 0){
+		err(EXIT_FAILURE, "failt to register fd to epoll");
+	}
+
+        memset(&ev, 0, sizeof(ev));
+        ev.events = EPOLLIN;
+        ev.data.fd = signal_fd;
+        if (epoll_ctl(epfd, EPOLL_CTL_ADD, signal_fd, &ev) != 0){
+                err(EXIT_FAILURE, "failt to register fd to epoll");
+        }
 
         if(!debug_mode){
                 if(daemon(0, 1) != 0){
@@ -266,24 +297,54 @@ int main(int argc, char *argv[]){
         }
 
 	/* start session ttl service */
+/*
         if (pthread_create(&thread_id_ttl, NULL, count_down_ttl, NULL) != 0 ){
                 exit(1);
         }
+*/
 
+	alarm(60);
 	memset(&v6_frag, 0, sizeof(struct v6_frag));
-        while ((read_len = read(tun_fd, buf, sizeof(buf))) >= 0){
-                ether_type = ntohs(pi->proto);
+        while(1){
+		if((nfds = epoll_wait(epfd, ev_ret, MAXEVENTS, -1)) <= 0){
+			err(EXIT_FAILURE, "Unexpected number of epoll arrived fd");
+		}
 
-                switch (ether_type) {
-                	case ETH_P_IP :
-                       		process_ipv4_packet(buf + sizeof(struct tun_pi), read_len - sizeof(struct tun_pi));
-                       		break;
-                	case ETH_P_IPV6 :
-                       		process_ipv6_packet(buf + sizeof(struct tun_pi), read_len - sizeof(struct tun_pi));
-                        	break;
-                	default :
-                        	break;
-                }
+		for(i = 0; i < nfds; i++){
+			if(ev_ret[i].data.fd == tun_fd){
+				read_len = read(tun_fd, buf, sizeof(buf));
+				if(read_len <= 0){
+					err(EXIT_FAILURE, "Unexpected size arrival of tun_fd");
+				}
+
+    				ether_type = ntohs(pi->proto);
+    				switch (ether_type) {
+     					case ETH_P_IP :
+						process_ipv4_packet(buf + sizeof(struct tun_pi),
+									read_len - sizeof(struct tun_pi));
+               					break;
+                			case ETH_P_IPV6 :
+                       				process_ipv6_packet(buf + sizeof(struct tun_pi),
+									read_len - sizeof(struct tun_pi));
+                        			break;
+                			default :
+                        			break;
+                		}
+			}else if(ev_ret[i].data.fd == signal_fd){
+				read_len = read(signal_fd, &siginfo, sizeof(struct signalfd_siginfo));
+				if(read_len < sizeof(struct signalfd_siginfo)){
+					err(EXIT_FAILURE, "Unexpected size arrival of siginfo");
+				}
+
+				if(siginfo.ssi_signo == SIGALRM){
+					count_down_ttl();
+				}else{
+					err(EXIT_FAILURE, "Unexpected signal");
+				}
+			}
+
+		}
+
         }
 
 }

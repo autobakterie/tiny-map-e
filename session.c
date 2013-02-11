@@ -306,47 +306,43 @@ void *reset_ttl(struct mapping *target){
         }
 }
 
-void *count_down_ttl(void *arg){
+void count_down_ttl(){
 	struct mapping *ptr;
 	struct mapping *prev;
 	struct mapping *tmp;
 	char log_source[256];
 	char log_mapped[256];
 
-	while(1){
-		prev = (struct mapping *)mapping_table;
-		ptr = prev->next;
+	prev = (struct mapping *)mapping_table;
+	ptr = prev->next;
 
-		/* lock session table */
-		if(pthread_mutex_lock(&mutex_session_table) != 0){
-        		err(EXIT_FAILURE, "failed to lock session table");
-        	}
+	/* lock session table */
+	if(pthread_mutex_lock(&mutex_session_table) != 0){
+       		err(EXIT_FAILURE, "failed to lock session table");
+       	}
 
-		while(ptr != NULL){
-			ptr->ttl--;
-			if(ptr->ttl == 0){
-				tmp = ptr;
-				prev->next = ptr->next;
-				ptr = ptr->next;
-				delete_mapping_from_hash(tmp);
-				inet_ntop(AF_INET, &(tmp->source_addr), log_source, sizeof(log_source));
-				inet_ntop(AF_INET, &(tmp->mapped_addr), log_mapped, sizeof(log_mapped));
-				syslog_write(LOG_INFO, "session deleted: %s <-> %s", log_source, log_mapped);
-				free(tmp);
-				continue;
-			}
-
-			prev = ptr;
+	while(ptr != NULL){
+		ptr->ttl--;
+		if(ptr->ttl == 0){
+			tmp = ptr;
+			prev->next = ptr->next;
 			ptr = ptr->next;
+			delete_mapping_from_hash(tmp);
+			inet_ntop(AF_INET, &(tmp->source_addr), log_source, sizeof(log_source));
+			inet_ntop(AF_INET, &(tmp->mapped_addr), log_mapped, sizeof(log_mapped));
+			syslog_write(LOG_INFO, "session deleted: %s <-> %s", log_source, log_mapped);
+			free(tmp);
+			continue;
 		}
 
-        	/* unlock session table */
-        	if(pthread_mutex_unlock(&mutex_session_table) != 0){
-                	err(EXIT_FAILURE, "failed to unlock session table");
-        	}
-
-		sleep(60);
+		prev = ptr;
+		ptr = ptr->next;
 	}
+
+       	/* unlock session table */
+       	if(pthread_mutex_unlock(&mutex_session_table) != 0){
+               	err(EXIT_FAILURE, "failed to unlock session table");
+       	}
 }
 
 

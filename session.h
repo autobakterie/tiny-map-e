@@ -17,4 +17,4 @@ struct in_addr select_mapped_addr(void *source_addr, uint16_t source_port);
 uint16_t select_restricted_port(struct in_addr mapped_addr, void *source_addr, uint16_t source_port);
 int insert_new_mapping(struct mapping *result);
 void *reset_ttl(struct mapping *target);
-void *count_down_ttl(void *arg);
+void count_down_ttl(void);

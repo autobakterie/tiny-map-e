@@ -1,6 +1,7 @@
 #define TTL_MAX 3
 #define MTU 1500
 #define MAX_SESSION 1000
+#define MAXEVENTS 16
 #define DEV_NAME "map-e"
 #define PROCESS_NAME "map-e"
 #define SYSLOG_FACILITY LOG_DAEMON
