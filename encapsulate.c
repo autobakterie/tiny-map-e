@@ -225,10 +225,6 @@ void process_ipv4_packet(char *buf, int len){
 
 			break;
 	}
-int s;
-for(s = 0; s < 10; s++){
-syslog_write(LOG_INFO, "test = %x\n", (uint8_t)buf[s + 20]);
-}
 
 	encap_packet(buf, len);
 
