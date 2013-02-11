@@ -21,54 +21,6 @@
 #include "encapsulate.h"
 #include "nat.h"
 
-void ntoh128(uint32_t *target){
-	int i;
-	for(i = 0; i < 128 / 32; i++){
-		target[i] = ntohl(target[i]);
-	}
-}
-
-void hton128(uint32_t *target){
-	int i;
-	for(i = 0; i < 128 / 32; i++){
-		target[i] = htonl(target[i]);
-	}
-}
-
-void bitset128(uint32_t *target, int num){
-	int index = num / 32;
-	uint32_t mask = 1 << 32 - (num % 32);
-	target[index] |= mask;
-}
-
-int bitcheck128(uint32_t *target, int num){
-	int index = num / 32;
-	uint32_t mask = 1 << 32 - (num % 32);
-	if(target[index] & mask){
-		return 1;
-	}else{
-		return 0;
-	}
-}
-
-int bitcheck32(uint32_t target, int num){
-	int mask = 1 << 32 - num;
-	if(target & mask){
-		return 1;
-	}else{
-		return 0;
-	}
-}
-
-int bitcheck16(uint16_t target, int num){
-	int mask = 1 << 16 - num;
-	if(target & mask){
-		return 1;
-	}else{
-		return 0;
-	}
-}
-
 struct in6_addr generate_mapped_v6addr(struct in6_addr v6_rule_addr, struct in_addr v4_addr, uint16_t port){
 	struct in6_addr mapped_v6addr;
 	struct in6_addr v6_rule_addr_h = v6_rule_addr;

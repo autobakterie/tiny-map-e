@@ -44,3 +44,22 @@ extern struct mapping *mapping_table;
 extern int tun_fd;
 extern int raw_fd;
 extern char *optarg;
+
+#define bitset128(target,num) ((target)[(num) / 32] |= (1 << 32 - ((num) % 32)))
+#define bitcheck128(target,num) ((target)[(num) / 32] & (1 << 32 - ((num) % 32)))
+#define bitcheck32(target,num) ((target) & (1 << 32 - (num)))
+#define bitcheck16(target,num) ((target) & (1 << 16 - (num)))
+
+#define ntoh128(target) \
+	(target)[0] = ntohl((target)[0]);\
+	(target)[1] = ntohl((target)[1]);\
+	(target)[2] = ntohl((target)[2]);\
+	(target)[3] = ntohl((target)[3]);
+
+#define hton128(target) \
+	(target)[0] = htonl((target)[0]);\
+	(target)[1] = htonl((target)[1]);\
+	(target)[2] = htonl((target)[2]);\
+	(target)[3] = htonl((target)[3]);
+
+
