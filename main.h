@@ -8,13 +8,6 @@
 #define MAP_BR 0
 #define MAP_CE 1
 
-struct v6_frag {
-	char		*buf;
-	uint32_t	id;
-	int		size;
-	int 		count;
-};
-
 struct map_config {
 	/* manually configured params */
 	struct in_addr v4_rule_addr;
@@ -38,14 +31,10 @@ struct map_config {
 	int subnet_id;
 };
 
-void timer_set(int sec, int nsec);
-int tun_alloc (char * dev);
-int tun_up (char * dev);
 int tun_set_af(void *buf, uint32_t af);
 void send_iovec(struct iovec *iov, int item_num);
+void send_raw(void *buf, int size, struct sockaddr *dst);
 void syslog_write(int level, char *fmt, ...);
-void syslog_open();
-void syslog_close();
 
 extern struct map_config config;
 extern struct v6_frag v6_frag;
@@ -56,21 +45,21 @@ extern int tun_fd;
 extern int raw_fd;
 extern char *optarg;
 
-#define bitset128(target,num) ((target)[(num) / 32] |= (1 << 32 - ((num) % 32)))
-#define bitcheck128(target,num) ((target)[(num) / 32] & (1 << 32 - ((num) % 32)))
+#define bitset128(target,num) (((uint32_t *)(target))[(num) / 32] |= (1 << 32 - ((num) % 32)))
+#define bitcheck128(target,num) (((uint32_t *)(target))[(num) / 32] & (1 << 32 - ((num) % 32)))
 #define bitcheck32(target,num) ((target) & (1 << 32 - (num)))
 #define bitcheck16(target,num) ((target) & (1 << 16 - (num)))
 
 #define ntoh128(target) \
-	(target)[0] = ntohl((target)[0]);\
-	(target)[1] = ntohl((target)[1]);\
-	(target)[2] = ntohl((target)[2]);\
-	(target)[3] = ntohl((target)[3]);
+	((uint32_t *)(target))[0] = ntohl(((uint32_t *)(target))[0]);\
+	((uint32_t *)(target))[1] = ntohl(((uint32_t *)(target))[1]);\
+	((uint32_t *)(target))[2] = ntohl(((uint32_t *)(target))[2]);\
+	((uint32_t *)(target))[3] = ntohl(((uint32_t *)(target))[3]);
 
 #define hton128(target) \
-	(target)[0] = htonl((target)[0]);\
-	(target)[1] = htonl((target)[1]);\
-	(target)[2] = htonl((target)[2]);\
-	(target)[3] = htonl((target)[3]);
+	((uint32_t *)(target))[0] = htonl(((uint32_t *)(target))[0]);\
+	((uint32_t *)(target))[1] = htonl(((uint32_t *)(target))[1]);\
+	((uint32_t *)(target))[2] = htonl(((uint32_t *)(target))[2]);\
+	((uint32_t *)(target))[3] = htonl(((uint32_t *)(target))[3]);
 
 

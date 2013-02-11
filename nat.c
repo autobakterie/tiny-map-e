@@ -21,6 +21,9 @@
 #include "encapsulate.h"
 #include "nat.h"
 
+static unsigned short ip4_transport_checksum(struct ip *ip, unsigned short *payload, int payloadsize);
+static unsigned short ip_checksum(unsigned short *buf, int size);
+
 void process_nat_ptog(struct mapping *result, char *buf, int len){
 	struct ip *ip = (struct ip *)buf;
         struct icmp *icmp;
@@ -87,7 +90,7 @@ void process_nat_gtop(struct mapping *result, char *buf, int len){
 	return;
 }
 
-unsigned short ip4_transport_checksum(struct ip *ip, unsigned short *payload, int payloadsize){
+static unsigned short ip4_transport_checksum(struct ip *ip, unsigned short *payload, int payloadsize){
         unsigned long sum = 0;
 
         struct pseudo_ipv4_header p;
@@ -122,7 +125,7 @@ unsigned short ip4_transport_checksum(struct ip *ip, unsigned short *payload, in
         return ~sum;
 }
 
-unsigned short ip_checksum(unsigned short *buf, int size){
+static unsigned short ip_checksum(unsigned short *buf, int size){
         unsigned long sum = 0;
 
         while (size > 1) {

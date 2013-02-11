@@ -26,6 +26,15 @@
 #include "session.h"
 #include "encapsulate.h"
 
+static void usage();
+static void timer_set(int sec, int nsec);
+static int create_signal_fd();
+static int create_raw_socket();
+static int tun_alloc (char * dev);
+static int tun_up (char * dev);
+static void syslog_open();
+static void syslog_close();
+
 struct map_config config;
 struct v6_frag v6_frag;
 
@@ -38,7 +47,7 @@ int raw_fd;
 int syslog_facility = SYSLOG_FACILITY;
 char *optarg;
 
-void usage(){
+static void usage(){
 	printf("\n");
 	printf(" Usage:\n");
 	printf("\tmap-e -6 [IPv6 rule prefix] -4 [IPv4 rule prefix] -b [BR address] -l [EA bits length] -e [EA bits] -m [MODE]\n");
@@ -76,7 +85,6 @@ int main(int argc, char *argv[]){
 	char v6_pool_arg[255];
 	struct epoll_event ev, ev_ret[MAXEVENTS]; 
 	int i, epfd, nfds;
-	sigset_t sigmask;
 	struct signalfd_siginfo siginfo;
 	int signal_fd;
 
@@ -248,15 +256,8 @@ int main(int argc, char *argv[]){
         }
 
 	/* signal_fd preparing */
-	sigemptyset(&sigmask);
-	sigaddset(&sigmask, SIGALRM);
-
-	if(sigprocmask(SIG_BLOCK, &sigmask, NULL) == -1){
-		err(EXIT_FAILURE, "failt to block signals");
-	}
-
-	if((signal_fd = signalfd(-1, &sigmask, 0)) < 0){
-		err(EXIT_FAILURE, "failt to make signal fd");
+	if((signal_fd = create_signal_fd()) < 0){
+		err(EXIT_FAILURE, "failt to create signal fd");
 	}
 
         /* epoll fd preparing */
@@ -324,7 +325,7 @@ int main(int argc, char *argv[]){
 
 }
 
-void timer_set(int sec, int nsec){
+static void timer_set(int sec, int nsec){
 	struct sigevent ev;  
 	ev.sigev_notify = SIGEV_SIGNAL;  
 	ev.sigev_signo  = SIGALRM;  
@@ -342,7 +343,7 @@ void timer_set(int sec, int nsec){
 	return;
 }  
 
-int create_raw_socket(){
+static int create_raw_socket(){
         int fd;
 
         /* create Raw Socket */
@@ -354,7 +355,27 @@ int create_raw_socket(){
         return fd;
 }
 
-int tun_alloc (char * dev){
+static int create_signal_fd(){
+        sigset_t sigmask;
+        int signal_fd;
+
+	sigemptyset(&sigmask);
+	sigaddset(&sigmask, SIGALRM);
+
+	if(sigprocmask(SIG_BLOCK, &sigmask, NULL) == -1){
+		perror("signalfd");
+		return -1;
+	}
+
+	if((signal_fd = signalfd(-1, &sigmask, 0)) < 0){
+		perror("signalfd");
+		return -1;
+	}
+
+	return signal_fd;
+}
+
+static int tun_alloc (char * dev){
 	int fd;
 	struct ifreq ifr;
 
@@ -376,7 +397,7 @@ int tun_alloc (char * dev){
 
 }
 
-int tun_up (char * dev){
+static int tun_up (char * dev){
 	int udp_fd;
 	struct ifreq ifr;
 
@@ -455,10 +476,10 @@ void syslog_write(int level, char *fmt, ...){
         va_end(args);
 }
 
-void syslog_open(){
+static void syslog_open(){
     openlog(PROCESS_NAME, LOG_CONS | LOG_PID, syslog_facility);
 }
 
-void syslog_close(){
+static void syslog_close(){
     closelog();
 }

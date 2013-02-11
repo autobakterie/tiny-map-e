@@ -21,7 +21,14 @@
 #include "encapsulate.h"
 #include "nat.h"
 
-struct in6_addr generate_mapped_v6addr(struct in6_addr v6_rule_addr, struct in_addr v4_addr, uint16_t port){
+static struct in6_addr generate_mapped_v6addr(	struct in6_addr v6_rule_addr,
+						struct in_addr v4_addr,
+						uint16_t port);
+static void decap_packet(char *buf, int len);
+static void encap_packet(char *buf, int len);
+
+
+static struct in6_addr generate_mapped_v6addr(struct in6_addr v6_rule_addr, struct in_addr v4_addr, uint16_t port){
 	struct in6_addr mapped_v6addr;
 	struct in6_addr v6_rule_addr_h = v6_rule_addr;
 	uint32_t v4addr = ntohl((uint32_t)v4_addr.s_addr);
@@ -243,7 +250,7 @@ void process_ipv6_packet (char *buf, int len){
 	}
 }
 
-void decap_packet(char *buf, int len){
+static void decap_packet(char *buf, int len){
         struct ip *ip = (struct ip *)(buf + sizeof(struct ip6_hdr));
         struct icmp *icmp;
         struct tcphdr *tcp;
@@ -302,7 +309,7 @@ void decap_packet(char *buf, int len){
 	return;
 }
 
-void encap_packet(char *buf, int len){
+static void encap_packet(char *buf, int len){
 	struct ip *ip = (struct ip *)buf;
 	struct ip6_hdr ip6;
 	struct ip6_frag ip6f;

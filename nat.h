@@ -8,5 +8,3 @@ struct pseudo_ipv4_header{
 
 void process_nat_ptog(struct mapping *result, char *buf, int len);
 void process_nat_gtop(struct mapping *result, char *buf, int len);
-unsigned short ip4_transport_checksum(struct ip *ip, unsigned short *payload, int payloadsize);
-unsigned short ip_checksum(unsigned short *buf, int size);
