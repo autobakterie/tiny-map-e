@@ -87,7 +87,7 @@ struct in6_addr generate_mapped_v6addr(struct in6_addr v6_rule_addr, struct in_a
 		If the End-user IPv6 prefix length is larger than 64,
    		the interface identifier is overwritten by the prefix.
 	*/
-	offset = v6_rule_prefix + ea_len + subnet_id_len + 16;
+	offset = 64 + 16;
 
         for(i = 0; i < v4_rule_prefix; i++){
                 if(bitcheck32(v4addr, i + 1)){

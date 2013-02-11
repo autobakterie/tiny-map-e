@@ -231,10 +231,11 @@ int main(int argc, char *argv[]){
 		return 1;
 	}
 
-	if(subnet_id_configured){
-		if(64 - (v6_rule_prefix + ea_len) > 0){
-			subnet_id_len = 64 - (v6_rule_prefix + ea_len);
-		}else{
+	if(64 - (v6_rule_prefix + ea_len) > 0){
+		subnet_id_len = 64 - (v6_rule_prefix + ea_len);
+	}else{
+		subnet_id_len = 0;
+		if(subnet_id_configured){
 			printf("End-User IPv6 prefix is larger than 64 bits\n");
 			return 1;
 		}
