@@ -26,27 +26,7 @@
 #include "session.h"
 #include "encapsulate.h"
 
-/* manually configured params */
-struct in_addr v4_rule_addr;
-struct in6_addr v6_rule_addr;
-struct in6_addr v6_br_addr;
-int v6_rule_prefix = 0;
-int v4_rule_prefix = 0;
-int ea_len = 0;
-
-/* manually configured params only in CE */
-uint32_t ea = 0; /* equals set CE's IPv6 address with WAN interface */
-
-/* automatically configured params */
-int v4_suffix_len = 0;
-int psid_len = 0;
-int subnet_id_len = 0;
-
-/* optionally configured params */
-int mode = MAP_BR;
-int a_bits = 4;
-int subnet_id = 0;
-
+struct map_config config;
 struct v6_frag v6_frag;
 
 struct mapping **inner_table;
@@ -107,6 +87,10 @@ int main(int argc, char *argv[]){
 	int subnet_id_configured = 0;
 	int br_addr_configured = 0;
 
+	memset(&config, 0, sizeof(struct map_config));
+	config.mode = MAP_BR;
+	config.a_bits = 4;
+
 	while ((ch = getopt(argc, argv, "dh6:4:b:e:l:s:a:m:")) != -1) {
 		switch (ch) {
 			case 'd' :
@@ -115,9 +99,9 @@ int main(int argc, char *argv[]){
 
 			case '6' :
 				strcpy(v6_pool_arg, strtok(optarg, "/"));
-				v6_rule_prefix = atoi(strtok(NULL, ""));
+				config.v6_rule_prefix = atoi(strtok(NULL, ""));
 
-				if (inet_pton(AF_INET6, v6_pool_arg, &v6_rule_addr) < 1){
+				if (inet_pton(AF_INET6, v6_pool_arg, &(config.v6_rule_addr)) < 1){
 					printf ("Invalid IPv6 prefix\n");
 					return -1;
 				}
@@ -128,9 +112,9 @@ int main(int argc, char *argv[]){
 
 			case '4' :
 				strcpy(v4_pool_arg, strtok(optarg, "/"));
-                                v4_rule_prefix = atoi(strtok(NULL, ""));
+                                config.v4_rule_prefix = atoi(strtok(NULL, ""));
 
-				if(inet_pton(AF_INET, v4_pool_arg, &v4_rule_addr) < 1){
+				if(inet_pton(AF_INET, v4_pool_arg, &(config.v4_rule_addr)) < 1){
 					printf("Invalid IPv4 prefix\n");
 					return -1;
 				}
@@ -140,7 +124,7 @@ int main(int argc, char *argv[]){
 				break;
 
 			case 'b' :
-                                if(inet_pton(AF_INET6, optarg, &v6_br_addr) < 1){
+                                if(inet_pton(AF_INET6, optarg, &(config.v6_br_addr)) < 1){
                                         printf("Invalid BR address\n");
                                         return -1;
                                 }
@@ -150,7 +134,7 @@ int main(int argc, char *argv[]){
 				break;
 
 			case 'e' :
-                                if(sscanf(optarg, "%x", &ea) < 1){
+                                if(sscanf(optarg, "%x", &(config.ea)) < 1){
                                         printf ("Invalid EA-bits configuration\n");
                                         return -1;
                                 }
@@ -160,24 +144,24 @@ int main(int argc, char *argv[]){
 
 
 			case 'l' : 
-				if(sscanf(optarg, "%d", &ea_len) < 1){
+				if(sscanf(optarg, "%d", &(config.ea_len)) < 1){
 					printf ("Invalid EA-bits length/IPv4 suffix length\n");
 					return -1;
 				}
 
 				/* TBD: EA > 32 is not supported yet.
 				EA would be 48 bits at most by Internet-Draft. */
-				if(ea_len > 32 || ea_len < 0){
+				if(config.ea_len > 32 || config.ea_len < 0){
 					printf ("Invalid EA-bits length/IPv4 suffix length\n");
 					return -1;
 				}
 
-				if(ea_len + v4_rule_prefix <= 32){
-					v4_suffix_len = ea_len;
-					psid_len = 0;
-				}else if(ea_len + v4_rule_prefix > 32){
-					v4_suffix_len = 32 - v4_rule_prefix;
-					psid_len = ea_len + v4_rule_prefix - 32;
+				if(config.ea_len + config.v4_rule_prefix <= 32){
+					config.v4_suffix_len = config.ea_len;
+					config.psid_len = 0;
+				}else if(config.ea_len + config.v4_rule_prefix > 32){
+					config.v4_suffix_len = 32 - config.v4_rule_prefix;
+					config.psid_len = config.ea_len + config.v4_rule_prefix - 32;
 				}
 
 				ea_len_configured = 1;
@@ -185,7 +169,7 @@ int main(int argc, char *argv[]){
 				break;
 
 			case 's' :
-				if(sscanf(optarg, "%d", &subnet_id) < 1){
+				if(sscanf(optarg, "%d", &(config.subnet_id)) < 1){
 					printf("Invalid subnet-id\n");
 					return -1;
 				}
@@ -194,7 +178,7 @@ int main(int argc, char *argv[]){
 				break;
 
                         case 'a' :
-                                if(sscanf(optarg, "%d", &a_bits) < 1){
+                                if(sscanf(optarg, "%d", &(config.a_bits)) < 1){
                                         printf("Invalid offset bit length of restricted NAT port assign\n");
                                         return -1;
                                 }
@@ -202,9 +186,9 @@ int main(int argc, char *argv[]){
 
 			case 'm' :
 				if(!strcmp(optarg, "br")){
-					mode = MAP_BR;
+					config.mode = MAP_BR;
 				}else if(!strcmp(optarg, "ce")){
-					mode = MAP_CE;
+					config.mode = MAP_CE;
 				}else{
 					printf("Invalid Mode\n");
 				}
@@ -226,15 +210,15 @@ int main(int argc, char *argv[]){
 		return -1;
 	}
 
-	if(ea_len > 0 && !ea_configured && mode == MAP_CE){
+	if(config.ea_len > 0 && !ea_configured && config.mode == MAP_CE){
 		usage();
 		return 1;
 	}
 
-	if(64 - (v6_rule_prefix + ea_len) > 0){
-		subnet_id_len = 64 - (v6_rule_prefix + ea_len);
+	if(64 - (config.v6_rule_prefix + config.ea_len) > 0){
+		config.subnet_id_len = 64 - (config.v6_rule_prefix + config.ea_len);
 	}else{
-		subnet_id_len = 0;
+		config.subnet_id_len = 0;
 		if(subnet_id_configured){
 			printf("End-User IPv6 prefix is larger than 64 bits\n");
 			return 1;

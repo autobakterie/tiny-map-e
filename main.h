@@ -15,6 +15,29 @@ struct v6_frag {
 	int 		count;
 };
 
+struct map_config {
+	/* manually configured params */
+	struct in_addr v4_rule_addr;
+	struct in6_addr v6_rule_addr;
+	struct in6_addr v6_br_addr;
+	int v6_rule_prefix;
+	int v4_rule_prefix;
+	int ea_len;
+
+	/* manually configured params only in CE */
+	uint32_t ea;
+
+	/* automatically configured params */
+	int v4_suffix_len;
+	int psid_len;
+	int subnet_id_len;
+
+	/* optionally configured params */
+	int mode;
+	int a_bits;
+	int subnet_id;
+};
+
 void timer_set(int sec, int nsec);
 int tun_alloc (char * dev);
 int tun_up (char * dev);
@@ -24,19 +47,7 @@ void syslog_write(int level, char *fmt, ...);
 void syslog_open();
 void syslog_close();
 
-extern struct in_addr v4_rule_addr;
-extern struct in6_addr v6_rule_addr;
-extern struct in6_addr v6_br_addr;
-extern int v6_rule_prefix;
-extern int v4_rule_prefix;
-extern int ea_len;
-extern uint32_t ea;
-extern int v4_suffix_len;
-extern int psid_len;
-extern int subnet_id_len;
-extern int mode;
-extern int a_bits;
-extern int subnet_id;
+extern struct map_config config;
 extern struct v6_frag v6_frag;
 extern struct mapping **inner_table;
 extern struct mapping **outer_table;

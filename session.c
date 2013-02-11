@@ -157,16 +157,16 @@ struct mapping *search_mapping_table_inner(struct in_addr source_addr, uint16_t 
 
 struct in_addr select_mapped_addr(void *source_addr, uint16_t source_port){
         struct in_addr *ip = (struct in_addr *)source_addr;
-	struct in_addr result = v4_rule_addr;
-	uint32_t v4_suffix = ea;
+	struct in_addr result = config.v4_rule_addr;
+	uint32_t v4_suffix = config.ea;
         uint32_t sum = ip->s_addr + source_port;
 	int range;
 	int i;
 
-	v4_suffix = v4_suffix >> psid_len;
-	v4_suffix = v4_suffix << 32 - (v4_rule_prefix + v4_suffix_len);
+	v4_suffix = v4_suffix >> config.psid_len;
+	v4_suffix = v4_suffix << 32 - (config.v4_rule_prefix + config.v4_suffix_len);
 
-	for(i = 0, range = 1; i < 32 - (v4_rule_prefix + v4_suffix_len); i++){
+	for(i = 0, range = 1; i < 32 - (config.v4_rule_prefix + config.v4_suffix_len); i++){
 		range *= 2;
 	}
 
@@ -179,18 +179,18 @@ struct in_addr select_mapped_addr(void *source_addr, uint16_t source_port){
 uint16_t select_restricted_port(struct in_addr mapped_addr, void *source_addr, uint16_t source_port){
 	struct mapping *ptr = (struct mapping *)mapping_table;
 	struct in_addr *ip = (struct in_addr *)source_addr;
-	uint16_t psid = (uint16_t)ea;
+	uint16_t psid = (uint16_t)(config.ea);
 	uint16_t result;
 	uint32_t sum = ip->s_addr + source_port;
 	int range;
 	int count = 0;
 	int i;
 
-	psid = psid << (16 - psid_len);
-	psid = psid >> (a_bits);
-	psid |= 1 << (16 - a_bits);
+	psid = psid << (16 - config.psid_len);
+	psid = psid >> (config.a_bits);
+	psid |= 1 << (16 - config.a_bits);
 
-        for(i = 0, range = 1; i < 16 - (a_bits + psid_len); i++){
+        for(i = 0, range = 1; i < 16 - (config.a_bits + config.psid_len); i++){
                 range *= 2;
         }
 
@@ -276,25 +276,4 @@ void count_down_ttl(){
 		ptr = ptr->next;
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
