@@ -166,7 +166,9 @@ void process_ipv4_packet(char *buf, int len){
 
 		--Following is referenced from Cisco's article:
 
-		The TCP or UDP header, containing the source and destination port numbers,
+		The TCP or UDP header,
+		containing the source and destination port numbers,
+		and ICMP header containing the identification that used translate these packets,
 		is in the first fragment only.
 		If that fragment is merely translated and forwarded,
 		the NAT has no way to tell whether the subsequent fragments must be translated.
