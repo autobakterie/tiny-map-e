@@ -160,7 +160,7 @@ void process_ipv4_packet(char *buf, int len){
 	uint16_t source_port = 0;
 	struct mapping *result;
 
-	if(ip->ip_off){
+	if(0){//ip->ip_off){
 		/* We drop packets already fragmented at IPv4 stack.
 		TBD: Should we have statuful information for fragmented packets?
 
