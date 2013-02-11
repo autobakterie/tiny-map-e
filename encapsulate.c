@@ -160,6 +160,32 @@ void process_ipv4_packet(char *buf, int len){
 	uint16_t source_port = 0;
 	struct mapping *result;
 
+	if(ip->ip_off){
+		/* We drop packets already fragmented at IPv4 stack.
+		TBD: Should we have statuful information for fragmented packets?
+
+		--Following is referenced from Cisco's article:
+
+		The TCP or UDP header, containing the source and destination port numbers,
+		is in the first fragment only.
+		If that fragment is merely translated and forwarded,
+		the NAT has no way to tell whether the subsequent fragments must be translated.
+
+		IP makes no guarantees that packets are delivered in order.
+		So it's quite possible that the first fragment might not even arrive at the NAT
+		before later fragments.
+
+		Cisco's NAT keeps stateful information about fragments.
+		If a first fragment is translated, information is kept
+		so that subsequent fragments are translated the same way.
+		If a fragment arrives before the first fragment,
+		the NAT has no choice but to hold the fragment
+		until the first fragment arrives and can be examined.
+		*/
+
+		return;
+	}
+
         if(ip->ip_p == IPPROTO_ICMP){
 		icmp = (struct icmp *)(buf + sizeof(struct ip));
 		source_port = icmp->icmp_id;
@@ -197,6 +223,11 @@ void process_ipv4_packet(char *buf, int len){
 
 			break;
 	}
+int s;
+for(s = 0; s < 10; s++){
+syslog_write(LOG_INFO, "test = %x\n", (uint8_t)buf[s + 20]);
+}
+
 	encap_packet(buf, len);
 
 	return;
@@ -246,10 +277,12 @@ void process_ipv6_packet (char *buf, int len){
 			buf + sizeof(struct ip6_hdr) + sizeof(struct ip6_frag), 
 			ntohs(ip6->ip6_plen) - sizeof(struct ip6_frag));
 		v6_frag.count += ntohs(ip6->ip6_plen) - sizeof(struct ip6_frag);
+syslog_write(LOG_INFO, "offset = %d, range = %d\n", offset, ntohs(ip6->ip6_plen) - sizeof(struct ip6_frag));
 
 
 		if(!(ip6f->ip6f_offlg & IP6F_MORE_FRAG)){
 			if(v6_frag.size == v6_frag.count){
+syslog_write(LOG_INFO, "size = %d\n", v6_frag.size);
 				decap_packet(v6_frag.buf, v6_frag.size);
 			}else{
 				/* failed to reassemble fragmented packets */
