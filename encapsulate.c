@@ -279,12 +279,9 @@ void process_ipv6_packet (char *buf, int len){
 			buf + sizeof(struct ip6_hdr) + sizeof(struct ip6_frag), 
 			ntohs(ip6->ip6_plen) - sizeof(struct ip6_frag));
 		v6_frag.count += ntohs(ip6->ip6_plen) - sizeof(struct ip6_frag);
-syslog_write(LOG_INFO, "offset = %d, range = %d\n", offset, ntohs(ip6->ip6_plen) - sizeof(struct ip6_frag));
-
 
 		if(!(ip6f->ip6f_offlg & IP6F_MORE_FRAG)){
 			if(v6_frag.size == v6_frag.count){
-syslog_write(LOG_INFO, "size = %d\n", v6_frag.size);
 				decap_packet(v6_frag.buf, v6_frag.size);
 			}else{
 				/* failed to reassemble fragmented packets */
