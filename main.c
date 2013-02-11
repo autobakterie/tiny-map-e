@@ -11,7 +11,6 @@
 #include <linux/if_tun.h>
 #include <sys/socket.h>
 #include <net/if.h>
-#include <pthread.h>
 #include <netinet/ip6.h>
 #include <netinet/ip.h>
 #include <netpacket/packet.h>
@@ -19,6 +18,8 @@
 #include <syslog.h>
 #include <stdarg.h>
 #include <sys/signalfd.h>
+#include <sys/time.h>
+#include <time.h>
 #include <sys/epoll.h>
 
 #include "main.h"
@@ -54,8 +55,6 @@ struct mapping *mapping_table;
 
 int tun_fd;
 int raw_fd;
-pthread_t thread_id_ttl;
-pthread_mutex_t mutex_session_table = PTHREAD_MUTEX_INITIALIZER;
 int syslog_facility = SYSLOG_FACILITY;
 char *optarg;
 
@@ -242,6 +241,12 @@ int main(int argc, char *argv[]){
 		}
 	}
 
+        if(!debug_mode){
+                if(daemon(0, 1) != 0){
+                        err(EXIT_FAILURE, "fail to run as a daemon\n");
+                }
+        }
+
 	mapping_table = init_mapping_table();
 
 	/* tun fd preparing */
@@ -260,14 +265,13 @@ int main(int argc, char *argv[]){
 
 	/* signal_fd preparing */
 	sigemptyset(&sigmask);
-	sigaddset(&sigmask, SIGINT);
 	sigaddset(&sigmask, SIGALRM);
 
-	if (sigprocmask(SIG_BLOCK, &sigmask, NULL) == -1){
+	if(sigprocmask(SIG_BLOCK, &sigmask, NULL) == -1){
 		err(EXIT_FAILURE, "failt to block signals");
 	}
 
-	if(signal_fd = signalfd(-1, &sigmask, 0) < 0){
+	if((signal_fd = signalfd(-1, &sigmask, 0)) < 0){
 		err(EXIT_FAILURE, "failt to make signal fd");
 	}
 
@@ -290,20 +294,7 @@ int main(int argc, char *argv[]){
                 err(EXIT_FAILURE, "failt to register fd to epoll");
         }
 
-        if(!debug_mode){
-                if(daemon(0, 1) != 0){
-                        err(EXIT_FAILURE, "fail to run as a daemon\n");
-                }
-        }
-
-	/* start session ttl service */
-/*
-        if (pthread_create(&thread_id_ttl, NULL, count_down_ttl, NULL) != 0 ){
-                exit(1);
-        }
-*/
-
-	alarm(60);
+	timer_set(60, 0);
 	memset(&v6_frag, 0, sizeof(struct v6_frag));
         while(1){
 		if((nfds = epoll_wait(epfd, ev_ret, MAXEVENTS, -1)) <= 0){
@@ -348,6 +339,24 @@ int main(int argc, char *argv[]){
         }
 
 }
+
+void timer_set(int sec, int nsec){
+	struct sigevent ev;  
+	ev.sigev_notify = SIGEV_SIGNAL;  
+	ev.sigev_signo  = SIGALRM;  
+      
+	struct itimerspec ts;  
+	ts.it_value.tv_sec     = sec;  
+	ts.it_value.tv_nsec    = nsec;  
+	ts.it_interval.tv_sec  = sec;  
+	ts.it_interval.tv_nsec = nsec;  
+      
+	timer_t timer_id;  
+	timer_create(CLOCK_MONOTONIC, &ev, &timer_id);  
+	timer_settime(timer_id, 0, &ts, 0);  
+
+	return;
+}  
 
 int create_raw_socket(){
         int fd;

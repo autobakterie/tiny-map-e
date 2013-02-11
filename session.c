@@ -8,7 +8,6 @@
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <arpa/inet.h>
-#include <pthread.h>
 #include <syslog.h>
 
 #include "main.h"
@@ -34,7 +33,6 @@ struct mapping *init_mapping_table(){
 }
 
 int add_mapping_to_hash(struct mapping *result){
-	/* this method called where mapping table is locked */
 	uint32_t outer_key = create_table_key(&(result->mapped_addr), result->mapped_port);
 	uint32_t inner_key = create_table_key(&(result->source_addr), result->source_port);
 	int count;
@@ -73,7 +71,6 @@ int add_mapping_to_hash(struct mapping *result){
 }
 
 void delete_mapping_from_hash(struct mapping *result){
-	/* this method called where mapping table is locked */
         uint32_t outer_key = create_table_key(&(result->mapped_addr), result->mapped_port);
         uint32_t inner_key = create_table_key(&(result->source_addr), result->source_port);
 
@@ -116,19 +113,11 @@ struct mapping *search_mapping_table_outer(struct in_addr mapped_addr, uint16_t 
         uint32_t key = create_table_key(&mapped_addr, mapped_port);
         int count = 0;
 
-        /* lock session table */
-        if(pthread_mutex_lock(&mutex_session_table) != 0){
-                err(EXIT_FAILURE, "failed to lock session table");
-        }
-
         while(++count <= MAX_SESSION){
 		if(outer_table[key] != NULL){
                 	if(!memcmp(&(outer_table[key]->mapped_addr), &mapped_addr, 4)
 				&& outer_table[key]->mapped_port == mapped_port){
-        			/* unlock session table */
-        			if(pthread_mutex_unlock(&mutex_session_table) != 0){
-        			        err(EXIT_FAILURE, "failed to unlock session table");
-        			}
+
                         	return outer_table[key];
                 	}
 		}
@@ -139,11 +128,6 @@ struct mapping *search_mapping_table_outer(struct in_addr mapped_addr, uint16_t 
                 }
         }
 
-        /* unlock session table */
-        if(pthread_mutex_unlock(&mutex_session_table) != 0){
-                err(EXIT_FAILURE, "failed to unlock session table");
-        }
-
         return NULL;
 
 }
@@ -152,19 +136,11 @@ struct mapping *search_mapping_table_inner(struct in_addr source_addr, uint16_t 
         uint32_t key = create_table_key(&source_addr, source_port);
         int count = 0;
 
-        /* lock session table */
-        if(pthread_mutex_lock(&mutex_session_table) != 0){
-                err(EXIT_FAILURE, "failed to lock session table");
-        }
-
         while(++count <= MAX_SESSION){
 		if(inner_table[key] != NULL){
                 	if(!memcmp(&(inner_table[key]->source_addr), &source_addr, 4)
 				&& inner_table[key]->source_port == source_port){
-        			/* unlock session table */
-        			if(pthread_mutex_unlock(&mutex_session_table) != 0){
-        			        err(EXIT_FAILURE, "failed to unlock session table");
-        			}
+
                         	return inner_table[key];
                 	}
 		}
@@ -173,11 +149,6 @@ struct mapping *search_mapping_table_inner(struct in_addr source_addr, uint16_t 
                 if(key == MAX_SESSION){
                         key = 0;
                 }
-        }
-
-        /* unlock session table */
-        if(pthread_mutex_unlock(&mutex_session_table) != 0){
-                err(EXIT_FAILURE, "failed to unlock session table");
         }
 
         return NULL;
@@ -248,11 +219,6 @@ int insert_new_mapping(struct mapping *result){
 	mapped_addr = select_mapped_addr(&(result->source_addr), result->source_port);
 	mapped_port = select_restricted_port(mapped_addr, &(result->source_addr), result->source_port);
 
-	/* lock session table */
-	if(pthread_mutex_lock(&mutex_session_table) != 0){
-        	err(EXIT_FAILURE, "failed to lock session table");
-        }
-
 	if(mapped_port != 0){
 		result->mapped_addr = mapped_addr;
 		result->mapped_port = mapped_port;
@@ -260,21 +226,11 @@ int insert_new_mapping(struct mapping *result){
 		if(add_mapping_to_hash(result) < 0){
 			/* session over flow */
 			free(result);
-
-                	/* unlock session table */
-                	if(pthread_mutex_unlock(&mutex_session_table) != 0){
-                        	err(EXIT_FAILURE, "failed to unlock session table");
-                	}
 			return -1;
 		}
 
 		result->next = ptr->next;
 		ptr->next = result;
-
-	        /* unlock session table */
-	        if(pthread_mutex_unlock(&mutex_session_table) != 0){
-       		         err(EXIT_FAILURE, "failed to unlock session table");
-	        }
 
                 inet_ntop(AF_INET, &(result->source_addr), log_source, sizeof(log_source));
                 inet_ntop(AF_INET, &(result->mapped_addr), log_mapped, sizeof(log_mapped));
@@ -283,27 +239,13 @@ int insert_new_mapping(struct mapping *result){
 		return 0;
 	}else{
 		free(result);
-	        /* unlock session table */
-	        if(pthread_mutex_unlock(&mutex_session_table) != 0){
-	                err(EXIT_FAILURE, "failed to unlock session table");
-        	}
 		return -1;
 	}
 
 }
 
 void *reset_ttl(struct mapping *target){
-	/* lock session table */
-        if(pthread_mutex_lock(&mutex_session_table) != 0){
-                err(EXIT_FAILURE, "failed to lock session table");
-        }
-
-	target->ttl = TTL_MAX;
-
-        /* unlock session table */
-        if(pthread_mutex_unlock(&mutex_session_table) != 0){
-                err(EXIT_FAILURE, "failed to unlock session table");
-        }
+	target->ttl = SESSION_TTL;
 }
 
 void count_down_ttl(){
@@ -315,11 +257,6 @@ void count_down_ttl(){
 
 	prev = (struct mapping *)mapping_table;
 	ptr = prev->next;
-
-	/* lock session table */
-	if(pthread_mutex_lock(&mutex_session_table) != 0){
-       		err(EXIT_FAILURE, "failed to lock session table");
-       	}
 
 	while(ptr != NULL){
 		ptr->ttl--;
@@ -338,11 +275,6 @@ void count_down_ttl(){
 		prev = ptr;
 		ptr = ptr->next;
 	}
-
-       	/* unlock session table */
-       	if(pthread_mutex_unlock(&mutex_session_table) != 0){
-               	err(EXIT_FAILURE, "failed to unlock session table");
-       	}
 }
 
 

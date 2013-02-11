@@ -1,4 +1,4 @@
-#define TTL_MAX 3
+#define SESSION_TTL 3
 #define MTU 1500
 #define MAX_SESSION 1000
 #define MAXEVENTS 16
@@ -15,7 +15,7 @@ struct v6_frag {
 	int 		count;
 };
 
-void cleanup_sigint (int sig);
+void timer_set(int sec, int nsec);
 int tun_alloc (char * dev);
 int tun_up (char * dev);
 int tun_set_af(void *buf, uint32_t af);
@@ -43,5 +43,4 @@ extern struct mapping **outer_table;
 extern struct mapping *mapping_table;
 extern int tun_fd;
 extern int raw_fd;
-extern pthread_mutex_t mutex_session_table;
 extern char *optarg;

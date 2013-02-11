@@ -7,7 +7,7 @@ PROGS = main
 all: $(PROGS)
 
 main: main.o encapsulate.o session.o nat.o
-	cc $(OPTIONS) -o map-e main.o encapsulate.o session.o nat.o -l pthread
+	cc $(OPTIONS) -o map-e main.o encapsulate.o session.o nat.o -l rt
 	rm *.o
 
 main.o : main.c
