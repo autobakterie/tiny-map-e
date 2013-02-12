@@ -1,12 +1,44 @@
-sa46t-at 2012/4/29
 
- 1) compile 
-	# cd ./sa46t-at
-	# make
 
- 2) run sa46t-at daemon
-	# ./sa46t-at -6 [SA46T ADDRESS] -4 [IPv4 ADDRESS/PREFIX]
+Common Rule:
+	IPv6 rule prefix	= 2001:db8:0000::/40
+	IPv4 rule prefix	= 192.0.2.0/24
+	BR address		= 2001:db8:ffff::1
+	EA bits length		= 16
 
- 3) add route to sa46t-at device
-	# ip -6 route add [SA46T ADDRESS]/[96 + IPv4 PREFIX] dev sa46t-at
-	# ip route add [IPv4 ADDRESS/PREFIX] dev sa46t-at
+1) BR side setup
+
+1-1) Start map-e daemon
+	map-e -6 2001:db8:0000::/40 -4 192.0.2.0/24 -b 2001:db8:ffff::1 -l 16 -m br
+
+1-2) Routing CE destined IPv4 packets to map-e interface
+	ip route add 192.0.2.0/24 dev map-e
+
+1-3) Routing BR destined IPv6 packets to map-e interface
+	ip route add 2001:db8:ffff::1/128 dev map-e
+
+1-4) DO NOT add BR address to map-e interface
+
+2) CE side setup
+	IPv4 suffix length	= 32 - 24(IPv4 rule prefix length) = 8
+	PSID length		= 16(EA bits length) - 8(IPv4 suffix length) = 8
+	EA bits			= 0x1234
+	IPv4 suffix 		= 0x12(Top 8bits of EA bits)
+	PSID			= 0x34(Bottom 8bits of EA bits)
+	PSID offset		= 4bits(fixed in this implementation)
+
+	Assigned CE prefix	= 192.0.2.18/32 + Port Set(0x34)
+	CE IPv6 address		= 2001:db8:0012:3400:0000:c000:0212:0034
+
+2-1) Start map-e daemon
+	map-e -6 2001:db8:0000::/40 -4 192.0.2.0/24 -b 2001:db8:ffff::1 -l 16 -e 0x1234 -m ce
+
+2-2) Routing IPv4 packets default to map-e interface
+	ip route add 0.0.0.0/0 dev map-e
+	(All packets routed to map-e interface will be NATed to assigned IPv4 prefix and port set)
+
+2-3) Routing CE destined IPv6 packets to map-e interface
+	ip route add 2001:db8:12:3400:0:c000:212:34/128 dev map-e
+
+2-4) DO NOT add CE address to map-e interface
+
