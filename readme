@@ -1,4 +1,4 @@
-
+This implementation is based on draft-ietf-softwire-map-04.
 
 Common Rule:
 	IPv6 rule prefix	= 2001:db8:0000::/40
