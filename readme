@@ -18,6 +18,8 @@ Common Rule:
 	ip route add 2001:db8:ffff::1/128 dev map-e
 
 1-4) DO NOT add BR address to map-e interface
+	* Linux kernel(at least 2.6.32) regards IPv6 packet with next header IPIP(0x04)
+	  as invaild packet...
 
 2) CE side setup
 	IPv4 suffix length	= 32 - 24(IPv4 rule prefix length) = 8
@@ -41,4 +43,5 @@ Common Rule:
 	ip route add 2001:db8:12:3400:0:c000:212:34/128 dev map-e
 
 2-4) DO NOT add CE address to map-e interface
+	* for the same reason 1-4)
 

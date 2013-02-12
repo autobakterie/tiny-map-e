@@ -199,6 +199,10 @@ void process_ipv6_packet (char *buf, int len){
 	if(ip6->ip6_nxt == IPPROTO_FRAGMENT){
 		ip6f = (struct ip6_frag *)(buf + sizeof(struct ip6_hdr));
 
+		if(ip6f->ip6f_nxt != IPPROTO_IPIP){
+			return;
+		}
+
 		if((v6_frag.id != ip6f->ip6f_ident) && (v6_frag.buf != NULL)){
 			/* previous reassembly has given up */
 			free(v6_frag.buf);
@@ -246,6 +250,10 @@ void process_ipv6_packet (char *buf, int len){
 			memset(&v6_frag, 0, sizeof(struct v6_frag));
 		}
 	}else{
+		if(ip6->ip6_nxt != IPPROTO_IPIP){
+			return;
+		}
+
 		decap_packet(buf, len);
 	}
 }
@@ -286,7 +294,8 @@ static void decap_packet(char *buf, int len){
 
 				/* Since NATed packet's source address is pysical interface's,
 				bypass packet packet arrival to tun interface
-				and directory sends it from pysical interface using raw socket. */
+				and directory sends it from pysical interface using raw socket.
+				*/
 				memset(&dst, 0, sizeof(struct sockaddr_in));
 				dst.sin_family = AF_INET;
 				dst.sin_addr = ip->ip_dst;
