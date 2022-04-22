@@ -1,23 +1,27 @@
 #Makefile
 #char code "LF(UNIX)" is required!!
 
-OPTIONS = -O1
-PROGS = main
+MAKEFLAGS += --no-builtin-rules
 
-all: $(PROGS)
+CC ?= cc
+CFLAGS ?= -O1
+CFLAGS += -D_GNU_SOURCE
+LDFLAGS ?=
+LDFLAGS += -l rt
 
-main: main.o encapsulate.o session.o nat.o
-	cc $(OPTIONS) -o map-e main.o encapsulate.o session.o nat.o -l rt
-	rm *.o
+SRC = main.c encapsulate.c session.c nat.c
+DEPS = $(patsubst %.c, %.h, $(SRC))
+OBJ = $(patsubst %.c, %.o, $(SRC))
 
-main.o : main.c
-	cc $(OPTIONS) -c main.c
+.PHONY: all
+all: map-e
 
-encapsulate.o : encapsulate.c
-	cc $(OPTIONS) -c encapsulate.c
+.PHONY: clean
+clean:
+	rm -f map-e *.o
 
-session.o : session.c
-	cc $(OPTIONS) -c session.c
+map-e: $(OBJ)
+	$(CC) $(LDFLAGS) -o $@ $^
 
-nat.o : nat.c
-	cc $(OPTIONS) -c nat.c
+$(OBJ): %.o: %.c $(DEPS)
+	$(CC) -c $(CFLAGS) -o $@ $<
